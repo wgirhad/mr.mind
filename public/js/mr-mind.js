@@ -1,5 +1,6 @@
-import GameAudio from './js/game-audio.js'
-import GameImage from './js/game-image.js'
+import MrMindGame from './mr-mind-game.js'
+import GameAudio from './game-audio.js'
+import GameImage from './game-image.js'
 
 export default class MrMind {
     constructor(canvas, repeatColor, debug) {
@@ -16,6 +17,7 @@ export default class MrMind {
         this.select.xdist = 136;
         this.select.ypos = 65;
         this.select.xpos = [];
+        this.combination = [];
 
         for (let i = 0; i <= 3; i++) {
             this.select.xpos[i] = 276 + this.select.xdist * i;
@@ -105,7 +107,7 @@ export default class MrMind {
     }
 
     gameMousePressed(x, y) {
-        let i
+        let i;
         if (this.scene == "game") {
             // pressed a color
             if (y >= 478 && y <= 519) {
@@ -117,11 +119,11 @@ export default class MrMind {
                 }
             }
 
-            // pressed one of the this.selection buttons
+            // pressed one of the this.combination buttons
             if (y >= 358 && y <= 417) {
                 for (i = 0; i <= 3; i++) {
                     if (x >= 385 + 70 * i && x <= 444 + 70 * i) {
-                        this.select[i] = this.switch;
+                        this.combination[i] = this.switch;
                     }
                 }
             }
@@ -140,38 +142,22 @@ export default class MrMind {
     }
 
     gameStart() {
-        let i, j, z, x;
+        let i, j;
 
+        this.game = new MrMindGame(4, 8, 10, this.repeatColor);
         this.bgm.setVolume(0.6);
         this.bgm.play();
         this.timer = 0;
         this.score = 0;
 
-        this.fails = 0;
+        this.turn = 0;
         this.switch = 0;
         this.win = false;
         this.over = false;
 
-        this.result = [];
         this.hintValue = [];
-
-        for (i = 0; i <= 3; i++) {
-            z = 0;
-            while (z == 0) {
-                this.result[i] = gameRandom(1, 8);
-                x = 1;
-                if (!this.repeatColor) {
-                    for (j = 0; j <= 3; j++) {
-                        if (i != j && this.result[i] == this.result[j]) {
-                            x = 0;
-                        }
-                    }
-                }
-                z = x;
-            }
-        }
-
-        for (i = 0; i <= 3; i++) this.select[i] = 0;
+        // clear combination, hint and trials
+        for (i = 0; i <= 3; i++) this.combination[i] = 0;
         for (i = 0; i <= 8; i++) this.hintValue[i] = 100;
 
         this.trials = [];
@@ -186,83 +172,46 @@ export default class MrMind {
     checkColors() {
         let i;
         for (i = 0; i <= 3; i++) {
-            if (this.select[i] == 0) {
+            if (this.combination[i] == 0) {
                 return false;
             }
         }
 
-        for (i = 0; i <= 3; i++) {
-            if (this.select[i] == this.result[i]) {
-                this.win = true;
-            } else {
-                this.failed();
-                break;
-            }
-        }
+        const guess = this.combination.map(a => a - 1);
+        const hint = this.game.guess(guess);
 
-        if (this.win == true) {
+        if (hint.status) {
             this.won();
+        } else {
+            this.failed(hint);
         }
     }
 
-    failed() {
+    failed(hint) {
         let z;
         this.win = false;
-        if (this.fails == 9) {
-            this.gameOver();
+
+        if (hint.status === false) {
+            this.gameOver(hint.data.result);
             return false;
         }
-        for (z = 0; z <= 3; z++) {
-            this.trials[this.fails][z] = this.select[z];
-        }
-        this.hint();
-        this.fails++;
+
+        this.trials[this.turn] = this.combination.slice(0);
+
+        this.hintValue[this.turn] = 10 * hint.data.correctPosition
+                                  +  1 * hint.data.correctColor;
+        this.turn++;
     }
 
-    gameOver() {
+    gameOver(result) {
+        this.result = result.map(a => a + 1);
         this.over = true;
         this.score = Math.floor(this.timer * 10)/10;
         this.timer = -1;
     }
 
-    hint() {
-        let check = [],
-            alloc = [],
-            i, j;
-
-        for (i = 0; i <= 3; i++) {
-            check[i] = 0;
-            alloc[i] = 0;
-        }
-
-        for (i = 0; i <= 3; i++) {
-            if (this.select[i] == this.result[i]) {
-                check[i] = 10;
-                alloc[i] = 1;
-            }
-        }
-
-        for (i = 0; i <= 3; i++) {
-            if (check[i] == 0) {
-                for (j = 0; j <= 3; j++) {
-                    if (alloc[j] == 0) {
-                        if (this.select[i] == this.result[j]) {
-                            check[i] = 1;
-                            alloc[j] = 1;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        this.hintValue[this.fails] = 0;
-        for (i = 0; i <= 3; i++) {
-            this.hintValue[this.fails] = this.hintValue[this.fails] + check[i];
-        }
-    }
-
     won() {
+        this.win = true;
         this.bgm.setVolume(0.5);
         this.fanfarre.play();
         this.gameOver();
@@ -285,14 +234,8 @@ export default class MrMind {
         if (this.scene == "game") {
             this.drawCanvas(this.images.bg, 0, 0);
 
-            if (this.debug) {
-                for (i = 0; i <= 3; i++) {
-                    this.drawCanvas(this.images.big[this.result[i]], 30, 30 + 90 * i);
-                }
-            }
-
             for (i = 0; i <= 3; i++) {
-                this.drawCanvas(this.images.big[this.select[i]], this.select.xpos[i], this.select.ypos);
+                this.drawCanvas(this.images.big[this.combination[i]], this.select.xpos[i], this.select.ypos);
             }
 
             for (i = 0; i <= 8; i++) {

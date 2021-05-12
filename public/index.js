@@ -1,4 +1,4 @@
-import MrMind from './mrmind.js'
+import MrMind from './js/mr-mind.js'
 import KnCode from './js/kncode.js'
 
 const canvas = document.getElementById("game");
