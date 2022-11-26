@@ -1,4 +1,5 @@
 import { GameOver } from './game-over.js';
+import { Cheat } from './cheat.js';
 import { Hint } from './hint.js';
 import { Victory } from './victory.js';
 
@@ -9,7 +10,6 @@ export default class MrMindGame {
         this.colorsCount = colorsCount;
         this.repeats = repeats;
         this.result = this.randomizeResult();
-        console.log(this.result);
     }
 
     randomizeResult() {
@@ -27,11 +27,15 @@ export default class MrMindGame {
         });
     }
 
+    cheat() {
+        return new Cheat(this.result);
+    }
+
     guess(combination) {
         this.tries--;
 
         if (this.matches(combination)) {
-            return new Victory();
+            return new Victory(this.result);
         }
 
         if (this.tries <= 0) {

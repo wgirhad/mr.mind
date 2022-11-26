@@ -1,14 +1,13 @@
 import MrMind from './js/mr-mind.js'
 import KnCode from './js/kncode.js'
 
-const canvas = document.getElementById("game");
-let debug = false
-let repeatColors = false
+const canvas = document.getElementById("game")
 
-const game = new MrMind(canvas, repeatColors, debug);
-game.play();
+fetch('config.json')
+    .then(response => response.json())
+    .then(({ debugMode, repeatColors }) => {
+        const game = new MrMind(canvas, repeatColors, debugMode)
+        game.play()
 
-KnCode(() => {
-    debug = !debug
-    game.debug = debug
-})
+        KnCode(() => game.toggleDebug())
+    })

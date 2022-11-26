@@ -10,6 +10,7 @@ export default class MrMind {
         this.debug = debug ?? false
         this.ctx = this.canvas.getContext("2d")
         this.images = {}
+        this.clock = 0;
     }
 
     play() {
@@ -24,7 +25,6 @@ export default class MrMind {
         }
 
         this.scene = "intro";
-        this.introtimer = -1;
         this.timer = -1;
 
         this.intro();
@@ -108,6 +108,11 @@ export default class MrMind {
 
     gameMousePressed(x, y) {
         let i;
+
+        if (this.scene == 'intro') {
+            return this.gameStart()
+        }
+
         if (this.scene == "game") {
             // pressed a color
             if (y >= 478 && y <= 519) {
@@ -145,6 +150,8 @@ export default class MrMind {
         let i, j;
 
         this.game = new MrMindGame(4, 8, 10, this.repeatColor);
+        this.scene = 'game'
+        this.debugMsg();
         this.bgm.setVolume(0.6);
         this.bgm.play();
         this.timer = 0;
@@ -181,7 +188,7 @@ export default class MrMind {
         const hint = this.game.guess(guess);
 
         if (hint.status) {
-            this.won();
+            this.won(hint);
         } else {
             this.failed(hint);
         }
@@ -193,7 +200,6 @@ export default class MrMind {
 
         if (hint.status === false) {
             this.gameOver(hint.data.result);
-            return false;
         }
 
         this.trials[this.turn] = this.combination.slice(0);
@@ -204,17 +210,17 @@ export default class MrMind {
     }
 
     gameOver(result) {
-        this.result = result.map(a => a + 1);
+        this.result = result;
         this.over = true;
-        this.score = Math.floor(this.timer * 10)/10;
+        this.score = parseInt(this.timer, 10);
         this.timer = -1;
     }
 
-    won() {
+    won(response) {
         this.win = true;
         this.bgm.setVolume(0.5);
         this.fanfarre.play();
-        this.gameOver();
+        this.gameOver(response.data.result);
     }
 
     mainLoop(dt) {
@@ -246,7 +252,8 @@ export default class MrMind {
 
             if (this.over) {
                 for (i = 0; i <= 3; i++) {
-                    this.drawCanvas(this.images.small[this.result[i]], 50 + 40 * i, 165);
+                    let img = this.result[i] + 1;
+                    this.drawCanvas(this.images.small[img], 50 + 40 * i, 165);
                 }
             }
 
@@ -276,20 +283,28 @@ export default class MrMind {
         this.ctx.drawImage(img.getImg(), x, y);
     }
 
-    gameUpdate(dt) {
+    gameUpdate(clock) {
+        const dt = clock - this.clock;
+
+        this.clock = clock;
+
         if (this.timer >= 0) {
             this.timer += dt;
         }
+    }
 
-        if (this.introtimer >= 0) {
-            this.introtimer += dt;
+    debugMsg() {
+        if (this.debug) {
+            console.log(this.game.cheat().data.result.map(this.constructor.toColorNames).join(''));
         }
+    }
 
-        if (this.introtimer > 4) {
-            this.scene = "game";
-            this.introtimer = -1;
-            this.gameStart();
-        }
+    static toColorNames(index) {
+        return ['🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜'][index];
+    }
+
+    toggleDebug() {
+        this.debug = !this.debug
     }
 }
 
